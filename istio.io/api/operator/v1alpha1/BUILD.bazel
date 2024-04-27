@@ -1,0 +1,86 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+# Beware, this file is written by hand and does not use api_proto_package.
+# We have to do that in this one place because these protos alone in the
+# entire codebase are imported with 2 names:
+#   internally, Istio API protos refer to eachother as `import "operator/compnent.proto"`
+#   externally, we reference those same protos as `import "istio.io/api/operator/component.proto"`
+# to support both of these at the same time, we need some refined targets to make the build work.
+# More notes inline, but the gist is that for the golang part of the build to succeed, we have
+# to have only a single go_proto_library rule (or we wind up with problems around go packages).
+
+proto_library(
+    name = "component_proto",
+    srcs = ["component.proto"],
+    strip_import_prefix = "//common-protos",  # enables import as "istio.io/api/operator/v1alpha1"
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common-protos/istio.io/api/operator/v1alpha1:kubernetes_proto",
+        "//common-protos/k8s.io/api/core/v1:pkg",
+        "@com_google_protobuf//:any_proto",
+    ],
+)
+
+# this rule is the hand-written version of the go_proto_library that `api_proto_package`
+# generated for `component_proto` above, with the exception that we include
+# `:kubernetes_proto` here. This is because we can only have a single go_proto_library.
+go_proto_library(
+    name = "component_proto_go_proto",
+    compilers = [
+        "@io_bazel_rules_go//proto:go_proto",
+        "@envoy_api//bazel:pgv_plugin_go",
+    ],
+    importpath = "github.com/tetrateio/api-common-protos/istio.io/api/operator/v1alpha1",
+    # this is the dirty part: we include ":kubernetes_proto" here for the golang build to work;
+    # we can do this because go_proto_library ignores `strip_import_prefix`. If we tried to
+    # pull in operator.proto, we'll have to rework how we attempt this (and probably just change
+    # the import in our proto to remove the need to do all this craziness).
+    protos = [
+        ":component_proto",
+        ":kubernetes_proto",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//common-protos/k8s.io/api/core/v1:pkg_go_proto",
+        "//common-protos/k8s.io/apimachinery/pkg/api/resource:pkg_go_proto",
+        "//common-protos/k8s.io/apimachinery/pkg/apis/meta/v1:pkg_go_proto",
+        "//common-protos/k8s.io/apimachinery/pkg/util/intstr:pkg_go_proto",
+        "@com_github_golang_protobuf//ptypes:go_default_library",
+        "@com_github_golang_protobuf//ptypes/any:go_default_library",
+    ],
+)
+
+proto_library(
+    name = "kubernetes_proto",
+    srcs = ["kubernetes.proto"],
+    strip_import_prefix = "//common-protos/istio.io/api",  # enables import as "istio.io/api/operator/v1alpha1"
+    visibility = ["//visibility:private"],
+    deps = [
+        "//common-protos/k8s.io/apimachinery/pkg/api/resource:pkg",
+        "//common-protos/k8s.io/apimachinery/pkg/apis/meta/v1:pkg",
+        "//common-protos/k8s.io/apimachinery/pkg/util/intstr:pkg",
+    ],
+)
+
+proto_library(
+    name = "operator_proto",
+    srcs = ["operator.proto"],
+    strip_import_prefix = "//common-protos/istio.io/api",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//common-protos/istio.io/api/operator/v1alpha1:component_proto_internal",
+    ],
+)
+
+proto_library(
+    name = "component_proto_internal",
+    srcs = ["component.proto"],
+    strip_import_prefix = "//common-protos/istio.io/api",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//common-protos/istio.io/api/operator/v1alpha1:kubernetes_proto",
+        "//common-protos/k8s.io/api/core/v1:pkg",
+        "@com_google_protobuf//:any_proto",
+    ],
+)

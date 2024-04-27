@@ -1,0 +1,5 @@
+load("//bazel:api_build_system.bzl", "api_proto_package")
+
+api_proto_package(
+    strip_import_prefix = "/common-protos",
+)

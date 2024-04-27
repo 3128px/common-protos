@@ -1,0 +1,10 @@
+load("//bazel:api_build_system.bzl", "api_proto_package")
+
+api_proto_package(
+    strip_import_prefix = "//common-protos",
+    deps = [
+        "//common-protos/k8s.io/apimachinery/pkg/apis/meta/v1:pkg",
+        "//common-protos/k8s.io/apimachinery/pkg/runtime:pkg",
+        "//common-protos/k8s.io/apimachinery/pkg/runtime/schema:pkg",
+    ],
+)

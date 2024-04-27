@@ -1,0 +1,7 @@
+load("//bazel:api_build_system.bzl", "k8s_api_proto_package")
+
+k8s_api_proto_package(
+    deps = [
+        "//common-protos/k8s.io/api/authentication/v1:pkg",
+    ],
+)
